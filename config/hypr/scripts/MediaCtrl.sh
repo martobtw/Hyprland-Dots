@@ -1,8 +1,22 @@
 #!/bin/bash
 # /* ---- 💫 https://github.com/JaKooLit 💫 ---- */  ##
-# Playerctl
+# Playerctl media controls with reliable play/pause notifications
 
 music_icon="$HOME/.config/swaync/icons/music.png"
+
+# Show notification with current song info or paused state
+show_music_notification() {
+    status=$(playerctl status)
+    if [[ "$status" == "Playing" ]]; then
+        song_title=$(playerctl metadata title)
+        song_artist=$(playerctl metadata artist)
+        notify-send -e -u low -i "$music_icon" "Now Playing:" "$song_title by $song_artist"
+    elif [[ "$status" == "Paused" ]]; then
+        notify-send -e -u low -i "$music_icon" "Playback:" "Paused"
+    else
+        notify-send -e -u low -i "$music_icon" "Playback:" "Stopped"
+    fi
+}
 
 # Play the next track
 play_next() {
@@ -16,31 +30,29 @@ play_previous() {
     show_music_notification
 }
 
-# Toggle play/pause
+# Toggle play/pause by inverting the *old* status for a race‑free notification
 toggle_play_pause() {
+    old_status=$(playerctl status)
     playerctl play-pause
-    show_music_notification
-}
 
-# Stop playback
-stop_playback() {
-    playerctl stop
-    notify-send -e -u low -i $music_icon " Playback:" " Stopped"
-}
-
-# Display notification with song information
-show_music_notification() {
-    status=$(playerctl status)
-    if [[ "$status" == "Playing" ]]; then
+    if [[ "$old_status" == "Playing" ]]; then
+        # we just paused
+        notify-send -e -u low -i "$music_icon" "Playback:" "Paused"
+    else
+        # we just played (or were already stopped)
         song_title=$(playerctl metadata title)
         song_artist=$(playerctl metadata artist)
-        notify-send -e -u low -i $music_icon "Now Playing:" "$song_title by $song_artist"
-    elif [[ "$status" == "Paused" ]]; then
-        notify-send -e -u low -i $music_icon " Playback:" " Paused"
+        notify-send -e -u low -i "$music_icon" "Now Playing:" "$song_title by $song_artist"
     fi
 }
 
-# Get media control action from command line argument
+# Stop playback completely
+stop_playback() {
+    playerctl stop
+    notify-send -e -u low -i "$music_icon" "Playback:" "Stopped"
+}
+
+# Dispatch based on the first argument
 case "$1" in
     "--nxt")
         play_next
